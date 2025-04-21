@@ -206,6 +206,11 @@ public class MainApp extends JFrame {
         setContentPane(dashboard);
         revalidate();
         repaint();
+
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setResizable(false);
     }
 
     public static void main(String[] args) {
