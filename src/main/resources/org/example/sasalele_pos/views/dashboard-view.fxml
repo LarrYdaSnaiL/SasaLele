@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sasalele_pos.controllers.DashboardController"
+            stylesheets="@../styles/styles.css">
+
+    <!-- Top Section: Header -->
+    <top>
+        <VBox styleClass="dashboard-header" spacing="10">
+            <Label text="Dashboard Sasalele POS" styleClass="dashboard-title"/>
+            <Label fx:id="userGreeting" text="Selamat datang, Admin!" styleClass="user-greeting"/>
+        </VBox>
+    </top>
+
+    <!-- Center Section: Product Table -->
+    <center>
+        <VBox spacing="20" style="-fx-padding: 20;">
+            <ToolBar>
+                <Button text="Tambah Produk" styleClass="btn-primary" onAction="#handleAddProduct"/>
+                <Button text="Edit Produk" styleClass="btn-warning" onAction="#handleEditProduct"/>
+                <Button text="Hapus Produk" styleClass="btn-danger" onAction="#handleDeleteProduct"/>
+            </ToolBar>
+
+            <TableView fx:id="productTable" styleClass="table-view">
+                <columns>
+                    <!-- ID Column -->
+                    <TableColumn text="ID Produk" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="id" />
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <!-- Name Column -->
+                    <TableColumn text="Nama Produk" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="name" />
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <!-- Price Column -->
+                    <TableColumn text="Harga (Rp)" styleClass="table-column price-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="price" />
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <!-- Type Column -->
+                    <TableColumn text="Jenis Produk" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="productType" />
+                        </cellValueFactory>
+                    </TableColumn>
+                </columns>
+            </TableView>
+        </VBox>
+    </center>
+
+    <!-- Bottom Section: Navigation -->
+    <bottom>
+        <HBox spacing="20" alignment="CENTER_RIGHT" style="-fx-padding: 20;">
+            <Button text="Manajemen Pengguna" styleClass="btn-secondary" onAction="#handleUserManagement"/>
+            <Button text="Transaksi Baru" styleClass="btn-success" onAction="#handleNewTransaction"/>
+            <Button text="Lihat Log" styleClass="btn-info" onAction="#handleViewLogs"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
