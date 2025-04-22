@@ -1,0 +1,151 @@
+/* styles.css - Stylesheet untuk Aplikasi Sasalele POS */
+
+/* ==================== ROOT & GLOBAL STYLES ==================== */
+.root {
+    -fx-font-family: "Segoe UI";
+    -fx-base: #2c3e50; /* Warna dasar aplikasi */
+    -fx-background: #ecf0f1;
+}
+
+/* ==================== LOGIN SCENE ==================== */
+.login-title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 0 0 20px 0;
+}
+
+.login-container {
+    -fx-background-color: #ffffff;
+    -fx-padding: 30px;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.1), 10, 0, 0, 0);
+}
+
+/* Text Field Styling */
+.text-field, .password-field {
+    -fx-pref-width: 250px;
+    -fx-padding: 8px;
+    -fx-background-radius: 5px;
+    -fx-border-radius: 5px;
+    -fx-border-color: #bdc3c7;
+}
+
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #3498db;
+    -fx-effect: dropshadow(three-pass-box, rgba(52,152,219,0.3), 5, 0, 0, 0);
+}
+
+/* Button Styling */
+.button {
+    -fx-pref-width: 100px;
+    -fx-padding: 8px 15px;
+    -fx-background-radius: 5px;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.btn-login {
+    -fx-background-color: #27ae60;
+    -fx-text-fill: white;
+}
+
+.btn-login:hover {
+    -fx-background-color: #219a52;
+}
+
+.btn-register {
+    -fx-background-color: #95a5a6;
+    -fx-text-fill: white;
+}
+
+.btn-register:hover {
+    -fx-background-color: #7f8c8d;
+}
+
+/* ==================== DASHBOARD SCENE ==================== */
+.dashboard-title {
+    -fx-font-size: 20px;
+    -fx-text-fill: #2c3e50;
+    -fx-padding: 15px;
+}
+
+.table-view {
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 0);
+}
+
+.table-column {
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 10px;
+}
+
+/* ==================== TRANSACTION SCENE ==================== */
+.transaction-total {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #27ae60;
+}
+
+.cart-item {
+    -fx-border-color: #bdc3c7;
+    -fx-border-width: 0 0 1px 0;
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.error-message {
+    -fx-text-fill: #e74c3c;
+    -fx-font-size: 12px;
+    -fx-padding: 5px 0;
+}
+
+.warning-alert {
+    -fx-background-color: #f9edbe;
+    -fx-text-fill: #8a6d3b;
+    -fx-padding: 10px;
+    -fx-background-radius: 5px;
+}
+
+.success-alert {
+    -fx-background-color: #dff0d8;
+    -fx-text-fill: #3c763d;
+    -fx-padding: 10px;
+    -fx-background-radius: 5px;
+}
+
+/* ==================== PRODUCT CLASSES ==================== */
+
+/* Format khusus untuk kolom harga */
+.price-column {
+    -fx-alignment: CENTER-RIGHT;
+}
+
+/* Format ikon untuk tipe produk */
+.table-cell {
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 8px;
+}
+
+/* Warna khusus untuk tipe produk */
+.table-cell:perishable {
+    -fx-text-fill: #e74c3c;
+}
+
+.table-cell:digital {
+    -fx-text-fill: #2980b9;
+}
+
+.table-cell:bundle {
+    -fx-text-fill: #27ae60;
+}
+
+/* Transaction View Specific */
+.table-cell {
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 5px;
+}
+
+.text-field:error {
+    -fx-border-color: #e74c3c;
+    -fx-border-width: 2px;
+}

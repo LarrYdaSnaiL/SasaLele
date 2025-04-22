@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.example.sasalele_pos.controllers.TransactionController"
+            stylesheets="@../styles/styles.css">
+
+    <!-- Top Section: Product Search -->
+    <top>
+        <VBox spacing="10" style="-fx-padding: 20;">
+            <Label text="Cari Produk" styleClass="subtitle"/>
+
+            <HBox spacing="10">
+                <TextField fx:id="searchField"
+                           promptText="Masukkan kode/nama produk"
+                           style="-fx-pref-width: 300px;"
+                           onKeyReleased="#handleSearch"/>
+                <Button text="Cari" styleClass="btn-primary" onAction="#handleSearch"/>
+            </HBox>
+
+            <TableView fx:id="searchResultsTable" styleClass="table-view">
+                <columns>
+                    <TableColumn text="Kode" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="id"/>
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <TableColumn text="Nama Produk" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="name"/>
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <TableColumn text="Harga (Rp)" styleClass="table-column price-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="price"/>
+                        </cellValueFactory>
+                    </TableColumn>
+                </columns>
+            </TableView>
+        </VBox>
+    </top>
+
+    <!-- Center Section: Cart and Payment -->
+    <center>
+        <VBox spacing="20" style="-fx-padding: 20;">
+            <Label text="Keranjang Belanja" styleClass="subtitle"/>
+
+            <TableView fx:id="cartTable" styleClass="table-view">
+                <columns>
+                    <TableColumn text="Produk" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="product.name"/>
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <TableColumn text="Harga Satuan (Rp)" styleClass="table-column price-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="product.price"/>
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <TableColumn text="Jumlah" styleClass="table-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="quantity"/>
+                        </cellValueFactory>
+                    </TableColumn>
+
+                    <TableColumn text="Subtotal (Rp)" styleClass="table-column price-column">
+                        <cellValueFactory>
+                            <PropertyValueFactory property="subtotal"/>
+                        </cellValueFactory>
+                    </TableColumn>
+                </columns>
+            </TableView>
+
+            <HBox spacing="40" alignment="CENTER_LEFT">
+                <!-- Total Section -->
+                <VBox spacing="5">
+                    <Label text="Total Belanja:" styleClass="bold-label"/>
+                    <Label fx:id="totalLabel" text="Rp0" styleClass="amount-label"/>
+                </VBox>
+
+                <!-- Payment Input -->
+                <VBox spacing="5">
+                    <Label text="Jumlah Bayar (Rp):" styleClass="bold-label"/>
+                    <TextField fx:id="paymentField"
+                               promptText="Masukkan jumlah bayar"
+                               style="-fx-pref-width: 200px;"/>
+                </VBox>
+
+                <!-- Change Section -->
+                <VBox spacing="5">
+                    <Label text="Kembalian (Rp):" styleClass="bold-label"/>
+                    <Label fx:id="changeLabel" text="Rp0" styleClass="amount-label"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </center>
+
+    <!-- Bottom Section: Action Buttons -->
+    <bottom>
+        <HBox spacing="20" alignment="CENTER_RIGHT" style="-fx-padding: 20;">
+            <Button text="Tambah ke Keranjang"
+                    styleClass="btn-success"
+                    onAction="#handleAddToCart"/>
+
+            <Button text="Hapus Item"
+                    styleClass="btn-danger"
+                    onAction="#handleRemoveItem"/>
+
+            <Button text="Proses Transaksi"
+                    styleClass="btn-primary"
+                    onAction="#handleCheckout"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
