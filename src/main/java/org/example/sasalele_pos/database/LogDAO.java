@@ -39,7 +39,7 @@ public class LogDAO {
                 String description = rs.getString("description");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                return Log(logId, type, description, timestamp);
+                return new Log(logId, type, description, timestamp);
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil log: " + e.getMessage());
@@ -62,7 +62,7 @@ public class LogDAO {
                 String description = rs.getString("description");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                logs.add(Log(logId, type, description, timestamp));
+                logs.add(new Log(logId, type, description, timestamp));
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil semua log: " + e.getMessage());

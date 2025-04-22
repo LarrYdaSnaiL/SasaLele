@@ -2,6 +2,7 @@ package org.example.sasalele_pos;
 
 import org.example.sasalele_pos.database.LogDAO;
 import org.example.sasalele_pos.database.ProductDAO;
+import org.example.sasalele_pos.database.UserDAO;
 import org.example.sasalele_pos.exceptions.InvalidProductException;
 import org.example.sasalele_pos.exceptions.InvalidTransactionException;
 import org.example.sasalele_pos.functions.CurrencyParser;
@@ -829,17 +830,171 @@ public class DashboardApp extends JPanel {
 
     // Create a sample "Akun" panel
     private JPanel createAkunPanel() {
-        // Create the main panel for Akun
-        JPanel akunPanel = new JPanel();
+        JPanel akunPanel = new JPanel(new BorderLayout());
         akunPanel.setBackground(Color.WHITE);
-        akunPanel.setLayout(new BorderLayout());
 
-        // Title Label for Akun
-        JLabel titleLabel = new JLabel("Akun", JLabel.CENTER);
+        // Title
+        JLabel titleLabel = new JLabel("Daftar Akun", JLabel.CENTER);
         titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
         titleLabel.setForeground(Color.BLACK);
         akunPanel.add(titleLabel, BorderLayout.NORTH);
+
+        // Table setup
+        String[] columnNames = {"Username", "Role", "Aksi"};
+        DefaultTableModel model = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 2; // Only action column is editable
+            }
+        };
+
+        // Ambil data dari database
+        java.util.List<User> userList = new UserDAO().getAllUsers();
+        for (User user : userList) {
+            model.addRow(new Object[]{user.getUsername(), user.getRole(), ""});
+        }
+
+        JTable table = new JTable(model);
+        table.setRowHeight(40); // Tinggi baris biar keliatan lebih bagus
+        table.setFont(new Font("Arial", Font.PLAIN, 14));
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 14));
+
+        table.getColumn("Aksi").setCellRenderer(new ButtonRenderer());
+        table.getColumn("Aksi").setCellEditor(new ButtonEditor(new JCheckBox()));
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        akunPanel.add(scrollPane, BorderLayout.CENTER);
         return akunPanel;
+    }
+
+    class ButtonRenderer extends JPanel implements TableCellRenderer {
+        public ButtonRenderer() {
+            setLayout(new GridBagLayout());
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value,
+                                                       boolean isSelected, boolean hasFocus, int row, int column) {
+            removeAll();
+            JButton editButton = new JButton("Edit");
+            JButton deleteButton = new JButton("Delete");
+
+            editButton.setPreferredSize(new Dimension(80, 30));
+            deleteButton.setPreferredSize(new Dimension(80, 30));
+
+            editButton.setFont(new Font("Arial", Font.PLAIN, 12));
+            deleteButton.setFont(new Font("Arial", Font.PLAIN, 12));
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(0, 5, 0, 5);
+            gbc.gridx = 0;
+            add(editButton, gbc);
+            gbc.gridx = 1;
+            add(deleteButton, gbc);
+
+            return this;
+        }
+    }
+
+    class ButtonEditor extends DefaultCellEditor {
+        private JPanel panel;
+        private JButton editButton, deleteButton;
+        private JTable table;
+
+        public ButtonEditor(JCheckBox checkBox) {
+            super(checkBox);
+            panel = new JPanel(new GridBagLayout());
+
+            editButton = new JButton("Edit");
+            deleteButton = new JButton("Delete");
+
+            editButton.setPreferredSize(new Dimension(80, 30));
+            deleteButton.setPreferredSize(new Dimension(80, 30));
+
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(0, 5, 0, 5);
+            gbc.gridx = 0;
+            panel.add(editButton, gbc);
+            gbc.gridx = 1;
+            panel.add(deleteButton, gbc);
+
+            // Menangani klik tombol Edit
+            editButton.addActionListener(e -> {
+                int row = table.getSelectedRow();
+                String username = table.getValueAt(row, 0).toString();
+                String role = table.getValueAt(row, 1).toString();
+
+                // Menampilkan form edit username dan role
+                JTextField usernameField = new JTextField(username);
+
+                // Dropdown (JComboBox) untuk role
+                String[] roles = {"User", "Admin"};
+                JComboBox<String> roleComboBox = new JComboBox<>(roles);
+                roleComboBox.setSelectedItem(role);  // Menetapkan role yang ada sebagai pilihan yang terpilih
+
+                // Menyusun form input
+                Object[] message = {
+                        "Username:", usernameField,
+                        "Role:", roleComboBox
+                };
+
+                int option = JOptionPane.showConfirmDialog(panel, message, "Edit Akun", JOptionPane.OK_CANCEL_OPTION);
+
+                if (option == JOptionPane.OK_OPTION) {
+                    // Ambil data baru dari input form
+                    String newUsername = usernameField.getText();
+                    String newRole = (String) roleComboBox.getSelectedItem(); // Ambil nilai yang dipilih dari combo box
+
+                    // Update database
+                    boolean success = new UserDAO().updateUser(username, newUsername, newRole);
+
+                    if (success) {
+                        // Update model
+                        table.setValueAt(newUsername, row, 0);
+                        table.setValueAt(newRole, row, 1);
+                        JOptionPane.showMessageDialog(panel, "Akun berhasil diperbarui.");
+                    } else {
+                        JOptionPane.showMessageDialog(panel, "Gagal memperbarui akun.");
+                    }
+                }
+
+                fireEditingStopped();
+            });
+
+            // Menangani klik tombol Delete
+            deleteButton.addActionListener(e -> {
+                int result = JOptionPane.showConfirmDialog(panel, "Yakin hapus akun?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
+                if (result == JOptionPane.YES_OPTION) {
+                    int row = table.getSelectedRow();
+                    String username = table.getValueAt(row, 0).toString();
+
+                    // Hapus dari database
+                    boolean success = new UserDAO().deleteUser(username);
+
+                    if (success) {
+                        // Hapus dari model
+                        ((DefaultTableModel) table.getModel()).removeRow(row);
+                        JOptionPane.showMessageDialog(panel, "Akun berhasil dihapus.");
+                    } else {
+                        JOptionPane.showMessageDialog(panel, "Gagal menghapus akun.");
+                    }
+                }
+                fireEditingStopped();
+            });
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value,
+                                                     boolean isSelected, int row, int column) {
+            this.table = table; // Set reference to table
+            return panel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return "";
+        }
     }
 
     // Create a sample "Log" panel
@@ -877,7 +1032,7 @@ public class DashboardApp extends JPanel {
         // Populate the data array with values from the list
         for (int i = 0; i < products.size(); i++) {
             Product product = products.get(i);
-            data[i][0] = logs
+
             data[i][1] = product.getName();               // Type
             data[i][2] = product.getProductType();        // Desc
         }

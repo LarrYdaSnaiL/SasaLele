@@ -214,6 +214,9 @@ public class MainApp extends JFrame {
         setResizable(false);
     }
 
+    //akun user
+
+
     public static void main(String[] args) {
         authService = new AuthService();
         productService = new ProductService();
