@@ -31,9 +31,22 @@ public class PurchaseTransaction extends Transaction implements Payable {
 
     @Override
     public double calculateTotal() {
-        return items.stream()
-                .mapToDouble(CartItem::calculateSubtotal)
-                .sum();
+        double totalHarga = 0;
+
+        for (CartItem item : items) {
+            try {
+                double price = item.getProduct().getPrice();
+                int quantity = item.getQuantity();
+
+                // Add the subtotal (price * quantity) to the total price
+                totalHarga += price * quantity;
+            } catch (Exception e) {
+                System.err.println("Error processing cart item: " + e.getMessage());
+            }
+        }
+
+        // Return the calculated total price
+        return totalHarga;
     }
 
     @Override

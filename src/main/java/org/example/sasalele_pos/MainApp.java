@@ -104,8 +104,9 @@ public class MainApp extends JFrame {
             if (isAuthenticated) {
                 currentUser = authService.getCurrentUser(); // ✅ Sekarang method ini tersedia
                 JOptionPane.showMessageDialog(this, "Login berhasil!");
+                currentUser = authService.getCurrentUser();
                 loginDialog.dispose(); // Close the dialog upon successful login
-                openDashboard(); // Open the dashboard after successful login
+                openDashboard(currentUser); // Open the dashboard after successful login
             } else {
                 JOptionPane.showMessageDialog(this, "Username/password salah!");
             }
@@ -201,8 +202,8 @@ public class MainApp extends JFrame {
     }
 
     // Open the Dashboard after successful login
-    private void openDashboard() {
-        DashboardApp dashboard = new DashboardApp(currentUser);
+    private void openDashboard(User currentUser) {
+        DashboardApp dashboard = new DashboardApp(MainApp.currentUser);
         setContentPane(dashboard);
         revalidate();
         repaint();

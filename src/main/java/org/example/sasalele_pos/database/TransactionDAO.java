@@ -5,6 +5,7 @@ import org.example.sasalele_pos.model.Product;
 import org.example.sasalele_pos.transactions.PurchaseTransaction;
 import org.example.sasalele_pos.transactions.RefundTransaction;
 import org.example.sasalele_pos.transactions.Transaction;
+
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -22,14 +23,14 @@ public class TransactionDAO {
 
     // Method untuk transaksi pembelian
     private void addPurchaseTransaction(PurchaseTransaction transaction) {
-        String transactionSql = "INSERT INTO transactions (transactionId, date, totalAmount, username, type) VALUES (?, ?, ?, ?, 'PURCHASE')";
+        String transactionSql = "INSERT INTO transactions (transaction_id, date, total_amount, username, type) VALUES (?, ?, ?, ?, 'PURCHASE')";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(transactionSql)) {
 
             // Simpan data transaksi
             pstmt.setString(1, transaction.getTransactionId());
-            pstmt.setString(2, transaction.getDate().toString());
+            pstmt.setTimestamp(2, Timestamp.valueOf(transaction.getDate()));
             pstmt.setDouble(3, transaction.calculateTotal());
             pstmt.setString(4, transaction.getUsername());
             pstmt.executeUpdate();
@@ -44,7 +45,7 @@ public class TransactionDAO {
 
     // Method untuk transaksi refund
     private void addRefundTransaction(RefundTransaction transaction) {
-        String sql = "INSERT INTO transactions (transactionId, date, totalAmount, username, type, originalTransactionId) VALUES (?, ?, ?, ?, 'REFUND', ?)";
+        String sql = "INSERT INTO transactions (transaction_id, date, total_amount, username, type, originalTransactionId) VALUES (?, ?, ?, ?, 'REFUND', ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -64,7 +65,7 @@ public class TransactionDAO {
 
     // Simpan item transaksi ke tabel transaction_items
     private void insertTransactionItems(PurchaseTransaction transaction) throws SQLException {
-        String sql = "INSERT INTO transaction_items (transactionId, productId, quantity, priceAtTransaction) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO transaction_items (transaction_id, product_id, quantity, price_at_transaction) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

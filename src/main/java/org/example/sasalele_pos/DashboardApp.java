@@ -1,22 +1,49 @@
 package org.example.sasalele_pos;
 
-import org.example.sasalele_pos.model.User;
+import org.example.sasalele_pos.database.LogDAO;
+import org.example.sasalele_pos.database.ProductDAO;
+import org.example.sasalele_pos.exceptions.InvalidProductException;
+import org.example.sasalele_pos.exceptions.InvalidTransactionException;
+import org.example.sasalele_pos.functions.CurrencyParser;
+import org.example.sasalele_pos.interfaces.Payable;
+import org.example.sasalele_pos.model.*;
+import org.example.sasalele_pos.services.AuthService;
+import org.example.sasalele_pos.services.LogService;
+import org.example.sasalele_pos.services.ProductService;
+import org.example.sasalele_pos.services.TransactionService;
+import org.example.sasalele_pos.transactions.PurchaseTransaction;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.text.MaskFormatter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.text.ParseException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DashboardApp extends JPanel {
+    // Declare col1Table at the class level so it's accessible in all methods
+    private JTable table;
+    private String[][] data = null;
 
-    private final JPanel sidebarPanel;
-    private final JPanel mainPanel;
+    JLabel idLabel, nameLabel, priceLabel;
+    JTextField idTextField, nameField, priceField;
+    JPanel buttonPanel, productDetailsPanel;
+    JButton cancelButton, saveButton;
+
+    private final JPanel sidebarPanel, mainPanel;
     private CardLayout cardLayout;  // To switch between different content in the main panel
 
+    User currentUser;
+
     public DashboardApp(User currentUser) {
+        this.currentUser = currentUser;
         setLayout(new BorderLayout());
 
         // Create Sidebar and Main content area
@@ -118,7 +145,6 @@ public class DashboardApp extends JPanel {
         // col1Panel to hold the table
         JPanel col1Panel = new JPanel();
         col1Panel.setLayout(new BorderLayout());
-        col1Panel.setBackground(Color.LIGHT_GRAY);
 
         // Create JTable for the Products data
         JTable col1Table = createProductTable();
@@ -128,130 +154,169 @@ public class DashboardApp extends JPanel {
         // Add col1Panel to the centerLayout
         centerLayout.add(col1Panel);
 
-        // Create col2Panel, which will be split into two parts (3:2 ratio)
+        /*------------------------------------------------------*/
+
+        List<CartItem> cartItems = new ArrayList<>();
+
         JPanel col2Panel = new JPanel();
-        GridLayout col2Grid = new GridLayout(2, 1);
-        col2Panel.setLayout(col2Grid);
-        col2Grid.setVgap(10);
+        col2Panel.setLayout(new BorderLayout());
+        centerLayout.setBorder(new EmptyBorder(10, 10, 10, 10));
+        centerLayout.add(col2Panel);
 
-        // First row (3 parts) of col2Panel
-        JPanel col2Top = new JPanel();
-        GridLayout col2TopGrid = new GridLayout(2, 1);
-        col2Top.setLayout(col2TopGrid);
-        col2TopGrid.setVgap(10);
-
-        JPanel col2TopRow1 = new JPanel();
-        col2Top.add(col2TopRow1);
-
-        GridLayout fieldRow1 = new GridLayout(1, 3);
-        col2TopRow1.setLayout(fieldRow1);
-        fieldRow1.setVgap(10);  // Vertical gap between components
-
-        JPanel idPanel = new JPanel();
-        idPanel.setBackground(Color.LIGHT_GRAY);
-        JLabel idLabel = new JLabel("ID:");
-        JTextField idField = new JTextField(10);  // Text field for ID input
-        idPanel.add(idLabel);
-        idPanel.add(idField);
-
-        JPanel qtyPanel = new JPanel();
-        qtyPanel.setBackground(Color.LIGHT_GRAY);
-        JLabel qtyLabel = new JLabel("Quantity:");
-        JTextField qtyField = new JTextField(10);  // Text field for Quantity input
-        qtyPanel.add(qtyLabel);
-        qtyPanel.add(qtyField);
-
-        JPanel submitPanel = new JPanel();
-        submitPanel.setBackground(Color.LIGHT_GRAY);
-        JButton submitButton = new JButton("Submit");
-        submitButton.addActionListener(e -> {
-            String id = idField.getText();
-            String quantity = qtyField.getText();
-
-            System.out.println("ID: " + id + ", Quantity: " + quantity);
-        });
-        submitPanel.add(submitButton);
-
-        col2TopRow1.add(idPanel);
-        col2TopRow1.add(qtyPanel);
-        col2TopRow1.add(submitPanel);
-
-        JPanel col2TopRow2 = new JPanel();
-        col2Top.add(col2TopRow2);
-        col2TopRow2.setLayout(new BorderLayout());  // Use BorderLayout to organize the table
-        col2TopRow2.setBackground(Color.LIGHT_GRAY);
-
-        // Create the table with data
-        String[][] data = {
-                {"1", "Product 1", "10", "100.0", "Action"},
-                {"2", "Product 2", "5", "50.0", "Action"},
-                {"3", "Product 3", "20", "200.0", "Action"}
-        };
+        // Column names
         String[] columnNames = {"ID", "Nama Produk", "Qty", "Harga", "Aksi"};
+
+        // Empty Data
+        String[][] data = new String[0][5];
 
         // Create a table model and JTable
         DefaultTableModel tableModel = new DefaultTableModel(data, columnNames);
         JTable table = new JTable(tableModel);
         table.setRowHeight(40);
 
-        // Add Action buttons to the "Aksi" column
-        table.getColumn("Aksi").setCellRenderer(new ButtonRenderer());
-        table.getColumn("Aksi").setCellEditor(new ButtonEditor(new JCheckBox()));
+        // Add Action buttons to the "Aksi" column (Edit, Delete)
+        table.getColumn("Aksi").setCellRenderer(new ButtonRendererTransaksi());
+        table.getColumn("Aksi").setCellEditor(new ButtonEditorTransaksi(new JCheckBox()));
 
-        // Wrap the table in a JScrollPane
-        JScrollPane col2Row1TableScrollPane = new JScrollPane(table);
+        JScrollPane tableScrollPane2 = new JScrollPane(table);
+        col2Panel.add(tableScrollPane2, BorderLayout.CENTER);
 
-        // Add the table to col2Top
-        col2TopRow2.add(col2Row1TableScrollPane, BorderLayout.CENTER);
+        JPanel col2TopRow1 = new JPanel();
+        GridLayout fieldRow1 = new GridLayout(1, 3);
+        col2TopRow1.setLayout(fieldRow1);
+        fieldRow1.setVgap(10);  // Vertical gap between components
+        col2Panel.add(col2TopRow1, BorderLayout.NORTH);
 
-        JPanel col2Bottom = new JPanel();
-        col2Bottom.setBackground(Color.LIGHT_GRAY);
-        col2Bottom.setLayout(new BoxLayout(col2Bottom, BoxLayout.Y_AXIS));  // Stack components vertically
-        col2Bottom.setBorder(new EmptyBorder(3, 3, 3, 3));
+        JPanel idPanel = new JPanel();
+        JLabel idLabel = new JLabel("ID:");
+        JTextField idField = new JTextField(10);  // Text field for ID input
+        idPanel.add(idLabel);
+        idPanel.add(idField);
+        col2TopRow1.add(idPanel);
+
+        JPanel qtyPanel = new JPanel();
+        JLabel qtyLabel = new JLabel("Quantity:");
+        JTextField qtyField = new JTextField(10);  // Text field for Quantity input
+        qtyPanel.add(qtyLabel);
+        qtyPanel.add(qtyField);
+        col2TopRow1.add(qtyPanel);
+
+        JPanel buttonPanel = new JPanel();
+        JButton submitButton = new JButton("Submit");
+        submitButton.addActionListener(e -> {
+            String idF = idField.getText();
+            int qtyF = Integer.parseInt(qtyField.getText());
+
+            addRowtoTable(tableModel, idF, qtyF, cartItems);
+        });
+        buttonPanel.add(submitButton);
+        col2TopRow1.add(buttonPanel);
+
+        centerLayout.add(col2Panel);
+        transaksiPanel.add(centerLayout, BorderLayout.CENTER);
+
+        JPanel col2SouthPanel = new JPanel();
+        col2SouthPanel.setLayout(new BoxLayout(col2SouthPanel, BoxLayout.Y_AXIS));
+        col2SouthPanel.setBorder(new EmptyBorder(10, 10, 50, 10));
+        col2Panel.add(col2SouthPanel, BorderLayout.SOUTH);
+
         JPanel totalPanel = new JPanel();
-        totalPanel.setBackground(Color.LIGHT_GRAY);
-        totalPanel.setLayout(new FlowLayout(FlowLayout.LEFT));  // Align to left
-        JLabel totalLabel = new JLabel("Harga Total: Rp.");
-        JLabel totalAmount = new JLabel("0");
+        JLabel totalLabel = new JLabel("Total Harga: Rp. ");
+        JLabel hargaLabel = new JLabel();
         totalPanel.add(totalLabel);
-        totalPanel.add(totalAmount);
-        col2Bottom.add(totalPanel);
+        totalPanel.add(hargaLabel);
+        col2SouthPanel.add(totalPanel);
+
+        tableModel.addTableModelListener(e -> {
+            setTotalHarga(tableModel, hargaLabel);
+        });
 
         JPanel uangPanel = new JPanel();
-        uangPanel.setBackground(Color.LIGHT_GRAY);
-        uangPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        JLabel uangLabel = new JLabel("Uang Pembeli: Rp.");
+        JLabel uangLabel = new JLabel("Uang: ");
         JTextField uangField = new JTextField(10);
         uangPanel.add(uangLabel);
         uangPanel.add(uangField);
-        col2Bottom.add(uangPanel);
+        col2SouthPanel.add(uangPanel);
 
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.setBackground(Color.LIGHT_GRAY);
-        JButton lanjutkanButton = new JButton("Lanjutkan Transaksi");
-        lanjutkanButton.addActionListener(e -> {
-            // Perform the logic for continuing the transaction
-            String uangPembeli = uangField.getText();
-            System.out.println("Transaksi Lanjutkan dengan Uang Pembeli: " + uangPembeli);
+        JPanel transactionButtonPanel = new JPanel();
+        JButton transactionButton = new JButton("Transaksi Panel");
+        transactionButton.addActionListener(e -> {
+            double totalHarga = CurrencyParser.convertCurrencyToDouble(hargaLabel.getText());
+            double totalUang = CurrencyParser.convertCurrencyToDouble(uangField.getText());
+            double uangKembalian = totalUang - totalHarga;
+
+            if (totalHarga > totalUang) {
+                JOptionPane.showMessageDialog(null, "Uang Pelanggan Kurang: Rp." + String.format("%,.2f", (totalHarga - totalUang)));
+            } else {
+                TransactionService transactionService = new TransactionService();
+                try {
+                    transactionService.processSale(cartItems, totalUang, currentUser.getUsername());
+                    showTransactionDialog(totalHarga, totalUang, uangKembalian, tableModel);
+                } catch (InvalidTransactionException ex) {
+                    JOptionPane.showMessageDialog(null, "Transaksi gagal: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         });
-        buttonPanel.add(lanjutkanButton);
-        col2Bottom.add(buttonPanel);
-
-        // Add both rows to col2Panel
-        col2Panel.add(col2Top);
-        col2Panel.add(col2Bottom);
-
-        // Add col2Panel to centerLayout
-        centerLayout.add(col2Panel);
-
-        transaksiPanel.add(centerLayout, BorderLayout.CENTER);
+        transactionButtonPanel.add(transactionButton);
+        col2SouthPanel.add(transactionButtonPanel);
 
         return transaksiPanel;
     }
 
+    // Method to set the total harga and update the label (similar to your 'setTotalHarga' method)
+    public void setTotalHarga(DefaultTableModel tableModel, JLabel totalLabel) {
+        // Initialize the total price to 0
+        double totalHarga = 0;
+
+        // Iterate over all the rows of the table (starting from row 0)
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            try {
+                // Get the price and quantity for each row
+                double price = CurrencyParser.convertCurrencyToDouble((String) tableModel.getValueAt(i, 3));  // Assuming the "Price" column is at index 3
+                int quantity = (int) CurrencyParser.convertCurrencyToDouble((String) tableModel.getValueAt(i, 2));     // Assuming the "Quantity" column is at index 2
+
+                // Add the subtotal (price * quantity) to the total price
+                totalHarga += price * quantity;
+            } catch (Exception e) {
+                System.err.println("Error processing row " + i + ": " + e.getMessage());
+            }
+        }
+
+        // Update the total price in the UI (e.g., a JLabel)
+        totalLabel.setText(String.format("%,.2f", totalHarga));
+    }
+
+    private static void addRowtoTable(DefaultTableModel tableModel, String id, int qty, List<CartItem> cartItems) {
+        Product product = ProductDAO.getProductById(id);
+
+        if (product != null) {
+            CartItem newItem = new CartItem(product, qty);
+            cartItems.add(newItem);
+
+            String[] newRow = new String[5];
+            newRow[0] = product.getId();
+            newRow[1] = product.getName();
+            newRow[2] = String.valueOf(qty);
+            newRow[3] = String.format("Rp. %,.2f", product.getPrice());
+            newRow[4] = "Action";
+
+            tableModel.addRow(newRow);
+        } else {
+            JOptionPane.showMessageDialog(null, "Product not found");
+        }
+    }
+
+    public String[][] getData() {
+        return data;
+    }
+
+    public void setData(String[][] data) {
+        this.data = data;
+    }
+
     // ButtonRenderer for the Action Buttons with plain text
-    static class ButtonRenderer extends JPanel implements TableCellRenderer {
-        public ButtonRenderer() {
+    static class ButtonRendererTransaksi extends JPanel implements TableCellRenderer {
+        public ButtonRendererTransaksi() {
             setLayout(new FlowLayout(FlowLayout.LEFT));  // Align buttons horizontally
         }
 
@@ -272,11 +337,11 @@ public class DashboardApp extends JPanel {
         }
     }
 
-    static class ButtonEditor extends DefaultCellEditor {
+    static class ButtonEditorTransaksi extends DefaultCellEditor {
         private String label;
         private JTable table;
 
-        public ButtonEditor(JCheckBox checkBox) {
+        public ButtonEditorTransaksi(JCheckBox checkBox) {
             super(checkBox);
         }
 
@@ -350,43 +415,481 @@ public class DashboardApp extends JPanel {
         }
     }
 
-    // Create the JTable for Products
+    // Show the transaction dialog with total, amount paid, change, and purchased items
+    private void showTransactionDialog(double totalHarga, double uangDiberikan, double kembalian, DefaultTableModel tableModel) {
+        // Create the dialog to display the transaction details
+        JDialog transactionDialog = new JDialog((Frame) null, "Transaksi Detail", true);
+        transactionDialog.setSize(400, 500);  // Increase size to accommodate the table and the "Done" button
+        transactionDialog.setLocationRelativeTo(null);
+
+        // Panel to hold the text labels and the table
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));  // Stack components vertically
+
+        // Add totalHarga, uangDiberikan, and kembalian labels
+        panel.add(new JLabel("Total Harga: Rp. " + String.format("%,.2f", totalHarga)));
+        panel.add(new JLabel("Uang Diberikan: Rp. " + String.format("%,.2f", uangDiberikan)));
+        panel.add(new JLabel("Kembalian: Rp. " + String.format("%,.2f", kembalian)));
+
+        // Create a table with the purchased items data
+        String[] columnNames = {"ID", "Nama Produk", "Qty", "Harga", "Total"};
+        String[][] rowData = new String[tableModel.getRowCount()][5];  // Create a rowData array with the same number of rows as the table
+
+        // Loop through the table to fetch the data for the dialog
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            rowData[i][0] = (String) tableModel.getValueAt(i, 0);  // ID
+            rowData[i][1] = (String) tableModel.getValueAt(i, 1);  // Nama Produk
+            rowData[i][2] = (String) tableModel.getValueAt(i, 2);  // Qty
+            rowData[i][3] = (String) tableModel.getValueAt(i, 3);  // Harga
+            int qty = Integer.parseInt((String) tableModel.getValueAt(i, 2));
+            double harga = CurrencyParser.convertCurrencyToDouble((String) tableModel.getValueAt(i, 3));
+            rowData[i][4] = String.format("Rp. " + "%,.2f", qty * harga); // Total (Qty * Harga)
+        }
+
+        // Create a table model and JTable for displaying purchased items
+        JTable itemsTable = new JTable(rowData, columnNames);
+        JScrollPane itemsTableScrollPane = new JScrollPane(itemsTable);
+
+        // Add the table to the panel
+        panel.add(itemsTableScrollPane);
+
+        // Create a "Done" button to close the dialog
+        JButton doneButton = new JButton("Done");
+        doneButton.addActionListener(e -> {
+            transactionDialog.dispose();  // Close the dialog when the "Done" button is clicked
+        });
+
+        // Add the "Done" button to the panel
+        panel.add(doneButton);
+
+        // Add the panel to the dialog
+        transactionDialog.add(panel);
+        transactionDialog.setVisible(true);
+    }
+
     private JTable createProductTable() {
-        // Sample data, you can modify this to fetch data from the database
-        String[][] data = {
-                {"1", "Product 1", "Electronics", "10.0"},
-                {"2", "Product 2", "Furniture", "20.5"},
-                {"3", "Product 3", "Clothing", "15.75"}
-        };
+        // Fetch all products from the database using getAllProducts()
+        List<Product> products = ProductDAO.getAllProducts();  // This will fetch the list of products
+
+        // Convert the list of prod objects into a 2D array for the table
+        String[][] data = new String[products.size()][4];  // 4 columns (ID, Name, Type, Price)
+
+        // Populate the data array with values from the list
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            data[i][0] = String.valueOf(product.getId());  // ID
+            data[i][1] = product.getName();               // Name
+            data[i][2] = product.getProductType();        // Type
+            data[i][3] = String.valueOf(product.getPrice()); // Price
+        }
+
+        // Column names
         String[] columnNames = {"ID", "Nama Produk", "Jenis", "Harga"};
 
         // Create a table model and JTable
         DefaultTableModel tableModel = new DefaultTableModel(data, columnNames);
+
+        // Return the table with populated data
         return new JTable(tableModel);
     }
 
     // Create a sample "Produk" panel
     private JPanel createProdukPanel() {
+        // Create the main panel for Produk
         JPanel produkPanel = new JPanel();
-        produkPanel.setBackground(Color.LIGHT_GRAY);
-        produkPanel.add(new JLabel("Produk Content"));
+        produkPanel.setBackground(Color.WHITE);
+        produkPanel.setLayout(new BorderLayout());
+
+        // Title Label for Produk
+        JLabel titleLabel = new JLabel("Produk", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setForeground(Color.BLACK);
+        produkPanel.add(titleLabel, BorderLayout.NORTH);
+
+        // Fetch all products from the database using getAllProducts()
+        List<Product> products = ProductDAO.getAllProducts();  // This will fetch the list of products
+
+        // Convert the list of prod objects into a 2D array for the table
+        String[][] data = new String[products.size()][8];  // 4 columns (ID, Name, Type, Price)
+
+        // Populate the data array with values from the list
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            data[i][0] = String.valueOf(product.getId());  // ID
+            data[i][1] = product.getName();               // Name
+            data[i][2] = product.getProductType();        // Type
+            data[i][3] = String.valueOf(product.getPrice()); // Price
+
+            // Handle expiry date, URL, and vendor based on product type
+            if (product instanceof PerishableProduct perishable) {
+                data[i][4] = perishable.getExpiryDate().toString();  // Expiry Date
+            } else {
+                data[i][4] = "N/A";  // Expiry Date not applicable
+            }
+
+            if (product instanceof DigitalProduct digital) {
+                data[i][5] = digital.getUrl();  // URL
+                data[i][6] = digital.getVendorName();  // Vendor
+            } else {
+                data[i][5] = "N/A";  // URL not applicable
+                data[i][6] = "N/A";  // Vendor not applicable
+            }
+
+            data[i][7] = "Action";
+        }
+
+        // Column names
+        String[] columnNames = {"ID", "Nama Produk", "Jenis", "Harga", "Tanggal Expire", "URL", "Vendor", "Aksi"};
+
+        // Create a table model and JTable
+        DefaultTableModel tableModel = new DefaultTableModel(data, columnNames);
+        JTable produkTable = new JTable(tableModel);
+        produkTable.setRowHeight(40);
+
+        // Add Action buttons to the "Aksi" column (Edit, Delete)
+        produkTable.getColumn("Aksi").setCellRenderer(new ButtonRendererProduk());
+        produkTable.getColumn("Aksi").setCellEditor(new ButtonEditorProduk(new JCheckBox()));
+
+        // Wrap the table in a JScrollPane
+        JScrollPane tableScrollPane = new JScrollPane(produkTable);
+        produkPanel.add(tableScrollPane, BorderLayout.CENTER);
+
+        // Create the "Create New Product" button below the table
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+        JButton createNewProductButton = new JButton("Create New Product");
+        createNewProductButton.addActionListener(e -> {
+            // Show the dialog for selecting the product type
+            showProductTypeDialog();
+        });
+        buttonPanel.add(createNewProductButton);
+        produkPanel.add(buttonPanel, BorderLayout.SOUTH);
+
         return produkPanel;
+    }
+
+    private void showProductTypeDialog() {
+        // Create a new dialog for selecting the product type
+        JDialog productTypeDialog = new JDialog((Frame) null, "Select Product Type", true);
+        productTypeDialog.setSize(400, 200);  // Set dialog size
+        productTypeDialog.setLocationRelativeTo(null);
+
+        // Panel to hold the dropdown and buttons
+        JPanel dialogPanel = new JPanel();
+        dialogPanel.setLayout(new BoxLayout(dialogPanel, BoxLayout.Y_AXIS));  // Stack components vertically
+
+        // Dropdown for product type selection
+        JLabel productTypeLabel = new JLabel("Select Product Type:");
+        String[] productTypes = {"BundleProduct", "NonPerishable", "Perishable", "DigitalProduct"};
+        JComboBox<String> productTypeComboBox = new JComboBox<>(productTypes);
+        dialogPanel.add(productTypeLabel);
+        dialogPanel.add(productTypeComboBox);
+
+        // Panel for "Cancel" and "Next" buttons
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+        // Cancel Button: closes the dialog
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> productTypeDialog.dispose());
+
+        // Next Button: goes to the next dialog for product details input
+        JButton nextButton = new JButton("Next");
+        nextButton.addActionListener(e -> {
+            String selectedProductType = (String) productTypeComboBox.getSelectedItem();
+            showProductDetailsDialog(selectedProductType);  // Pass selected product type to the next dialog
+            productTypeDialog.dispose();  // Close the product type dialog
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(nextButton);
+
+        dialogPanel.add(buttonPanel);
+
+        // Add the dialog panel to the dialog window
+        productTypeDialog.add(dialogPanel);
+        productTypeDialog.setVisible(true);
+    }
+
+    private void showProductDetailsDialog(String productType) {
+        // Create a dialog for entering product details
+        JDialog productDetailsDialog = new JDialog((Frame) null, "Enter Product Details", true);
+        productDetailsDialog.setSize(400, 300);
+        productDetailsDialog.setLocationRelativeTo(null);
+
+        // Panel to hold the input fields and buttons
+        JPanel dialogPanel = new JPanel();
+        dialogPanel.setLayout(new BoxLayout(dialogPanel, BoxLayout.Y_AXIS));  // Stack components vertically
+
+        // Label to show the selected product type
+        dialogPanel.add(new JLabel("Product Type: " + productType));
+
+        switch (productType) {
+            case "BundleProduct":
+                break;
+            case "NonPerishable":
+                // Input fields for product details
+                productDetailsPanel = new JPanel();
+                productDetailsPanel.setLayout(new GridLayout(4, 2));
+
+                idLabel = new JLabel("ID");
+                idTextField = new JTextField(10);
+                productDetailsPanel.add(idLabel);
+                productDetailsPanel.add(idTextField);
+
+                nameLabel = new JLabel("Product Name:");
+                nameField = new JTextField(15);
+                productDetailsPanel.add(nameLabel);
+                productDetailsPanel.add(nameField);
+
+                priceLabel = new JLabel("Price:");
+                priceField = new JTextField(10);
+                productDetailsPanel.add(priceLabel);
+                productDetailsPanel.add(priceField);
+
+                dialogPanel.add(productDetailsPanel);
+
+                // Panel for "Cancel" and "Save" buttons
+                buttonPanel = new JPanel();
+                buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+                // Cancel Button: closes the dialog
+                cancelButton = new JButton("Cancel");
+                cancelButton.addActionListener(e -> productDetailsDialog.dispose());
+
+                // Save Button: saves the product details (for now just show a message)
+                saveButton = new JButton("Save");
+                saveButton.addActionListener(e -> {
+                    String productId = idTextField.getText();
+                    String productName = nameField.getText();
+                    double productPrice = Double.parseDouble(priceField.getText());
+
+                    ProductService productService = new ProductService();
+                    try {
+                        productService.addProduct(new NonPerishableProduct(productId, productName, productPrice));
+                    } catch (InvalidProductException ex) {
+                        throw new RuntimeException(ex);
+                    }
+                    productDetailsDialog.dispose();
+                });
+
+                buttonPanel.add(cancelButton);
+                buttonPanel.add(saveButton);
+
+                dialogPanel.add(buttonPanel);
+
+                // Add the dialog panel to the dialog window
+                productDetailsDialog.add(dialogPanel);
+                productDetailsDialog.setVisible(true);
+                break;
+            case "Perishable":
+                // Input fields for product details
+                productDetailsPanel = new JPanel();
+                productDetailsPanel.setLayout(new GridLayout(4, 2));
+
+                idLabel = new JLabel("ID");
+                idTextField = new JTextField(10);
+                productDetailsPanel.add(idLabel);
+                productDetailsPanel.add(idTextField);
+
+                nameLabel = new JLabel("Product Name:");
+                nameField = new JTextField(15);
+                productDetailsPanel.add(nameLabel);
+                productDetailsPanel.add(nameField);
+
+                priceLabel = new JLabel("Price:");
+                priceField = new JTextField(10);
+                productDetailsPanel.add(priceLabel);
+                productDetailsPanel.add(priceField);
+
+                // Create a MaskFormatter for date input (yyyy-MM-dd)
+                MaskFormatter dateFormatter = null;
+                try {
+                    dateFormatter = new MaskFormatter("####-##-##"); // Format: yyyy-MM-dd
+                    dateFormatter.setPlaceholderCharacter('_'); // Placeholder for missing characters
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+
+                JLabel expiryDateLabel = new JLabel("Expiry Date:");
+                JFormattedTextField dateField = new JFormattedTextField(dateFormatter);
+                dateField.setColumns(10); // Set the size of the text field
+                productDetailsPanel.add(expiryDateLabel);
+                productDetailsPanel.add(dateField);
+
+                dialogPanel.add(productDetailsPanel);
+
+                // Panel for "Cancel" and "Save" buttons
+                buttonPanel = new JPanel();
+                buttonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
+
+                // Cancel Button: closes the dialog
+                cancelButton = new JButton("Cancel");
+                cancelButton.addActionListener(e -> productDetailsDialog.dispose());
+
+                // Save Button: saves the product details (for now just show a message)
+                saveButton = new JButton("Save");
+                saveButton.addActionListener(e -> {
+                    String productId = idTextField.getText();
+                    String productName = nameField.getText();
+                    double productPrice = Double.parseDouble(priceField.getText());
+                    String dateString = dateField.getText();  // Get the date as a string
+                    if (!dateString.isEmpty()) {
+                        try {
+                            // Convert the string to a LocalDate object using DateTimeFormatter
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                            LocalDate expiryDate = LocalDate.parse(dateString, formatter);
+
+                            ProductService productService = new ProductService();
+                            try {
+                                productService.addProduct(new PerishableProduct(productId, productName, productPrice, expiryDate));
+                            } catch (InvalidProductException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                    productDetailsDialog.dispose();
+                });
+
+                buttonPanel.add(cancelButton);
+                buttonPanel.add(saveButton);
+
+                dialogPanel.add(buttonPanel);
+
+                // Add the dialog panel to the dialog window
+                productDetailsDialog.add(dialogPanel);
+                productDetailsDialog.setVisible(true);
+                break;
+            case "DigitalProduct":
+                break;
+            default:
+                JOptionPane.showMessageDialog(null, "Invalid Product Type");
+                break;
+        }
+    }
+
+    static class ButtonRendererProduk extends JPanel implements TableCellRenderer {
+        public ButtonRendererProduk() {
+            setLayout(new FlowLayout(FlowLayout.LEFT));  // Align buttons horizontally
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            // Create buttons for the actions using text
+            JButton editButton = new JButton("Edit");
+            JButton deleteButton = new JButton("Delete");
+
+            // Add buttons to the panel
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.add(editButton);
+            buttonPanel.add(deleteButton);
+
+            return buttonPanel;
+        }
+    }
+
+    static class ButtonEditorProduk extends DefaultCellEditor {
+
+        public ButtonEditorProduk(JCheckBox checkBox) {
+            super(checkBox);
+        }
+
+        @Override
+        public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+
+            // Create action buttons with text labels
+            JButton editButton = new JButton("Edit");
+            JButton deleteButton = new JButton("Delete");
+
+            // Add action listeners for buttons
+            editButton.addActionListener(e -> {
+                // Handle Edit Action
+                JOptionPane.showMessageDialog(table, "Editing row " + row);
+            });
+            deleteButton.addActionListener(e -> {
+                // Handle Delete Action
+                JOptionPane.showMessageDialog(table, "Deleting row " + row);
+            });
+
+            // Add buttons to a panel
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.add(editButton);
+            buttonPanel.add(deleteButton);
+
+            return buttonPanel;
+        }
+
+        @Override
+        public Object getCellEditorValue() {
+            return null;
+        }
     }
 
     // Create a sample "Akun" panel
     private JPanel createAkunPanel() {
+        // Create the main panel for Akun
         JPanel akunPanel = new JPanel();
-        akunPanel.setBackground(Color.YELLOW);
-        akunPanel.add(new JLabel("Akun Content"));
+        akunPanel.setBackground(Color.WHITE);
+        akunPanel.setLayout(new BorderLayout());
+
+        // Title Label for Akun
+        JLabel titleLabel = new JLabel("Akun", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setForeground(Color.BLACK);
+        akunPanel.add(titleLabel, BorderLayout.NORTH);
         return akunPanel;
     }
 
     // Create a sample "Log" panel
     private JPanel createLogPanel() {
+        // Create the main panel for Log
         JPanel logPanel = new JPanel();
-        logPanel.setBackground(Color.PINK);
-        logPanel.add(new JLabel("Log Content"));
+        logPanel.setBackground(Color.WHITE);
+        logPanel.setLayout(new BorderLayout());
+
+        // Title Label for Log
+        JLabel titleLabel = new JLabel("Log", JLabel.CENTER);
+        titleLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        titleLabel.setForeground(Color.BLACK);
+        logPanel.add(titleLabel, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new BorderLayout());
+
+        JTable logTable = createLogTable();
+        JScrollPane tableScrollPane = new JScrollPane(logTable);  // Add table inside a JScrollPane
+        centerPanel.add(tableScrollPane, BorderLayout.CENTER);  // Add table to col1Panel
+        logPanel.add(centerPanel, BorderLayout.CENTER);
+
         return logPanel;
+    }
+
+    private JTable createLogTable() {
+        // Fetch all products from the database using getAllProducts()
+        List<Product> products = ProductDAO.getAllProducts();  // This will fetch the list of products
+
+        List<Log> logs = LogDAO.getAllLogs();
+        // Convert the list of prod objects into a 2D array for the table
+        String[][] data = new String[products.size()][3];  // 4 columns (ID, Name, Type, Price)
+
+        // Populate the data array with values from the list
+        for (int i = 0; i < products.size(); i++) {
+            Product product = products.get(i);
+            data[i][0] = logs
+            data[i][1] = product.getName();               // Type
+            data[i][2] = product.getProductType();        // Desc
+        }
+
+        // Column names
+        String[] columnNames = {"Timestamp", "Type", "Log Description"};
+
+        // Create a table model and JTable
+        DefaultTableModel tableModel = new DefaultTableModel(data, columnNames);
+
+        // Return the table with populated data
+        return new JTable(tableModel);
     }
 
     // ActionListener for sidebar buttons

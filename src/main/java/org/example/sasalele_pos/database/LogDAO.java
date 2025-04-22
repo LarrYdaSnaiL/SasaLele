@@ -16,7 +16,7 @@ public class LogDAO {
 
             pstmt.setString(1, log.getType());
             pstmt.setString(2, log.getDescription());
-            pstmt.setString(3, log.getTimestamp().toString());
+            pstmt.setTimestamp(3, Timestamp.valueOf(log.getTimestamp()));
             pstmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -26,7 +26,7 @@ public class LogDAO {
 
     // Ambil log berdasarkan ID
     public Log getLogById(int logId) {
-        String sql = "SELECT * FROM logs WHERE logId = ?";
+        String sql = "SELECT * FROM logs WHERE log_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -39,7 +39,7 @@ public class LogDAO {
                 String description = rs.getString("description");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                return new Log(logId, type, description, timestamp);
+                return Log(logId, type, description, timestamp);
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil log: " + e.getMessage());
@@ -48,7 +48,7 @@ public class LogDAO {
     }
 
     // Ambil semua log
-    public List<Log> getAllLogs() {
+    public static List<Log> getAllLogs() {
         List<Log> logs = new ArrayList<>();
         String sql = "SELECT * FROM logs";
 
@@ -57,12 +57,12 @@ public class LogDAO {
              ResultSet rs = stmt.executeQuery(sql)) {
 
             while (rs.next()) {
-                int logId = rs.getInt("logId");
+                int logId = rs.getInt("log_id");
                 String type = rs.getString("type");
                 String description = rs.getString("description");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                logs.add(new Log(logId, type, description, timestamp));
+                logs.add(Log(logId, type, description, timestamp));
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil semua log: " + e.getMessage());
@@ -72,7 +72,7 @@ public class LogDAO {
 
     // Hapus log berdasarkan ID
     public boolean deleteLog(int logId) {
-        String sql = "DELETE FROM logs WHERE logId = ?";
+        String sql = "DELETE FROM logs WHERE log_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {

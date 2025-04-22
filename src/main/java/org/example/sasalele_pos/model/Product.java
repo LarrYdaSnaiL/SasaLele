@@ -1,5 +1,7 @@
 package org.example.sasalele_pos.model;
 
+import java.util.Date;
+
 /**
  * Kelas abstrak yang merepresentasikan produk dasar dalam sistem POS.
  */
@@ -25,9 +27,6 @@ public abstract class Product {
     public String getId() {
         return id;
     }
-
-
-
 
     public void setId(String id) {
         if (id == null || id.trim().isEmpty()) {

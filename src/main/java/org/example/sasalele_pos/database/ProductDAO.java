@@ -9,7 +9,7 @@ import java.util.List;
 public class ProductDAO {
     // Tambahkan produk ke database
     public void addProduct(Product product) {
-        String sql = "INSERT INTO products(id, name, price, type, expiryDate, url, vendorName) VALUES(?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO products(id, name, price, type, expiry_date, url, vendor_name) VALUES(?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -23,18 +23,18 @@ public class ProductDAO {
             // Data khusus berdasarkan jenis produk
             if (product instanceof PerishableProduct) {
                 PerishableProduct pp = (PerishableProduct) product;
-                pstmt.setString(5, pp.getExpiryDate().toString());
+                pstmt.setDate(5, Date.valueOf(pp.getExpiryDate()));
                 pstmt.setNull(6, Types.VARCHAR); // url
                 pstmt.setNull(7, Types.VARCHAR); // vendorName
             }
             else if (product instanceof DigitalProduct) {
                 DigitalProduct dp = (DigitalProduct) product;
-                pstmt.setNull(5, Types.VARCHAR); // expiryDate
+                pstmt.setNull(5, Types.DATE); // expiryDate
                 pstmt.setString(6, dp.getUrl());
                 pstmt.setString(7, dp.getVendorName());
             }
             else { // NonPerishableProduct atau BundleProduct
-                pstmt.setNull(5, Types.VARCHAR); // expiryDate
+                pstmt.setNull(5, Types.DATE); // expiryDate
                 pstmt.setNull(6, Types.VARCHAR); // url
                 pstmt.setNull(7, Types.VARCHAR); // vendorName
             }
@@ -47,7 +47,7 @@ public class ProductDAO {
     }
 
     // Ambil produk berdasarkan ID
-    public Product getProductById(String id) {
+    public static Product getProductById(String id) {
         String sql = "SELECT * FROM products WHERE id = ?";
 
         try (Connection conn = DBConnection.getConnection();
@@ -63,12 +63,12 @@ public class ProductDAO {
 
                 switch (type) {
                     case "PERISHABLE":
-                        LocalDate expiryDate = LocalDate.parse(rs.getString("expiryDate"));
+                        LocalDate expiryDate = LocalDate.parse(rs.getString("expiry_date"));
                         return new PerishableProduct(id, name, price, expiryDate);
 
                     case "DIGITAL":
                         String url = rs.getString("url");
-                        String vendorName = rs.getString("vendorName");
+                        String vendorName = rs.getString("vendor_name");
                         return new DigitalProduct(id, name, price, url, vendorName);
 
                     case "BUNDLE":
@@ -88,7 +88,7 @@ public class ProductDAO {
 
     // Update produk
     public boolean updateProduct(Product product) {
-        String sql = "UPDATE products SET name = ?, price = ?, expiryDate = ?, url = ?, vendorName = ? WHERE id = ?";
+        String sql = "UPDATE products SET name = ?, price = ?, expiry_date = ?, url = ?, vendor_name = ? WHERE id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -140,7 +140,7 @@ public class ProductDAO {
     }
 
     // Ambil semua produk (untuk pencarian)
-    public List<Product> getAllProducts() {
+    public static List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products";
 
@@ -159,7 +159,7 @@ public class ProductDAO {
     }
 
     // Method khusus untuk BundleProduct (Ambil item dari tabel bundle_items)
-    private List<Product> getBundleItems(String bundleId) {
+    private static List<Product> getBundleItems(String bundleId) {
         List<Product> items = new ArrayList<>();
         String sql = "SELECT productId FROM bundle_items WHERE bundleId = ?";
 
