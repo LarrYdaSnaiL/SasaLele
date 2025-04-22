@@ -1,6 +1,7 @@
 package org.example.sasalele_pos.database;
 
 import org.example.sasalele_pos.model.*;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -26,14 +27,12 @@ public class ProductDAO {
                 pstmt.setDate(5, Date.valueOf(pp.getExpiryDate()));
                 pstmt.setNull(6, Types.VARCHAR); // url
                 pstmt.setNull(7, Types.VARCHAR); // vendorName
-            }
-            else if (product instanceof DigitalProduct) {
+            } else if (product instanceof DigitalProduct) {
                 DigitalProduct dp = (DigitalProduct) product;
                 pstmt.setNull(5, Types.DATE); // expiryDate
                 pstmt.setString(6, dp.getUrl());
                 pstmt.setString(7, dp.getVendorName());
-            }
-            else { // NonPerishableProduct atau BundleProduct
+            } else { // NonPerishableProduct atau BundleProduct
                 pstmt.setNull(5, Types.DATE); // expiryDate
                 pstmt.setNull(6, Types.VARCHAR); // url
                 pstmt.setNull(7, Types.VARCHAR); // vendorName
@@ -97,17 +96,15 @@ public class ProductDAO {
             pstmt.setDouble(2, product.getPrice());
 
             if (product instanceof PerishableProduct) {
-                pstmt.setString(3, ((PerishableProduct) product).getExpiryDate().toString());
+                pstmt.setDate(3, Date.valueOf(((PerishableProduct) product).getExpiryDate()));
                 pstmt.setNull(4, Types.VARCHAR);
                 pstmt.setNull(5, Types.VARCHAR);
-            }
-            else if (product instanceof DigitalProduct) {
-                pstmt.setNull(3, Types.VARCHAR);
+            } else if (product instanceof DigitalProduct) {
+                pstmt.setNull(3, Types.DATE);
                 pstmt.setString(4, ((DigitalProduct) product).getUrl());
                 pstmt.setString(5, ((DigitalProduct) product).getVendorName());
-            }
-            else {
-                pstmt.setNull(3, Types.VARCHAR);
+            } else {
+                pstmt.setNull(3, Types.DATE);
                 pstmt.setNull(4, Types.VARCHAR);
                 pstmt.setNull(5, Types.VARCHAR);
             }
@@ -177,5 +174,16 @@ public class ProductDAO {
             System.err.println("Gagal mengambil item bundle: " + e.getMessage());
         }
         return items;
+    }
+
+    public void deleteProductFromTransactionItems(String productId) throws SQLException {
+        String sql = "DELETE FROM transaction_items WHERE product_id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, productId);
+            pstmt.executeUpdate();
+        }
     }
 }

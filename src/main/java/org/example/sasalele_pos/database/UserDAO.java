@@ -2,6 +2,8 @@ package org.example.sasalele_pos.database;
 
 import org.example.sasalele_pos.model.User;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
     // Method untuk menambah user
@@ -40,13 +42,15 @@ public class UserDAO {
     }
 
     // Method untuk mengupdate data user
-    public boolean updateUser(User user) {
-        String sql = "UPDATE users SET password = ?, role = ? WHERE username = ?";
+    public boolean updateUser(String oldUsername, String newUsername, String newRole) {
+        String sql = "UPDATE users SET username = ?, role = ? WHERE username = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, user.getPassword());
-            pstmt.setString(2, user.getRole());
-            pstmt.setString(3, user.getUsername());
+
+            // Set parameter untuk update
+            pstmt.setString(1, newUsername);  // Set new username
+            pstmt.setString(2, newRole);      // Set new role
+            pstmt.setString(3, oldUsername); // Set old username sebagai kunci untuk update
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0; // Mengembalikan true jika ada baris yang diupdate
         } catch (SQLException e) {
@@ -82,5 +86,30 @@ public class UserDAO {
             e.printStackTrace();
             return false;
         }
+    }
+
+    // Method untuk mengambil semua user
+    public List<User> getAllUsers() {
+        List<User> userList = new ArrayList<>();
+        String sql = "SELECT * FROM users";
+
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String username = rs.getString("username");
+                String password = rs.getString("password");
+                String role = rs.getString("role");
+
+                User user = new User(username, password, role);
+                userList.add(user);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return userList;
     }
 }

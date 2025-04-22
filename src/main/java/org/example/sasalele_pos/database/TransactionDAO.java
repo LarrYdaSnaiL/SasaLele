@@ -8,6 +8,7 @@ import org.example.sasalele_pos.transactions.Transaction;
 
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,13 +46,13 @@ public class TransactionDAO {
 
     // Method untuk transaksi refund
     private void addRefundTransaction(RefundTransaction transaction) {
-        String sql = "INSERT INTO transactions (transaction_id, date, total_amount, username, type, originalTransactionId) VALUES (?, ?, ?, ?, 'REFUND', ?)";
+        String sql = "INSERT INTO transactions (transaction_id, date, total_amount, username, type, original_transaction_id) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, transaction.getTransactionId());
-            pstmt.setString(2, transaction.getDate().toString());
+            pstmt.setTimestamp(2, Timestamp.valueOf(transaction.getDate()));
             pstmt.setDouble(3, -transaction.calculateTotal()); // Simpan sebagai negatif
             pstmt.setString(4, transaction.getUsername());
             pstmt.setString(5, "REFUND");
@@ -83,7 +84,7 @@ public class TransactionDAO {
 
     // Ambil transaksi berdasarkan ID
     public Transaction getTransactionById(String transactionId) {
-        String sql = "SELECT * FROM transactions WHERE transactionId = ?";
+        String sql = "SELECT * FROM transactions WHERE transaction_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -93,7 +94,8 @@ public class TransactionDAO {
 
             if (rs.next()) {
                 String type = rs.getString("type");
-                LocalDateTime date = LocalDateTime.parse(rs.getString("date"));
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");  // Custom format to handle fractional seconds
+                LocalDateTime date = LocalDateTime.parse(rs.getString("date"), formatter);
                 String username = rs.getString("username");
 
                 // Di method getTransactionById()
@@ -106,7 +108,7 @@ public class TransactionDAO {
                             items
                     );
                 } else if ("REFUND".equals(type)) {
-                    String originalTransactionId = rs.getString("originalTransactionId");
+                    String originalTransactionId = rs.getString("original_transaction_id");
                     double refundAmount = rs.getDouble("totalAmount"); // Ambil nilai refundAmount dari kolom totalAmount
                     return new RefundTransaction(
                             transactionId,
@@ -126,7 +128,7 @@ public class TransactionDAO {
     // Ambil item transaksi dari tabel transaction_items
     private List<CartItem> getTransactionItems(String transactionId) {
         List<CartItem> items = new ArrayList<>();
-        String sql = "SELECT productId, quantity FROM transaction_items WHERE transactionId = ?";
+        String sql = "SELECT product_id, quantity FROM transaction_items WHERE transaction_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -135,7 +137,7 @@ public class TransactionDAO {
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
-                String productId = rs.getString("productId");
+                String productId = rs.getString("product_id");
                 int quantity = rs.getInt("quantity");
                 Product product = new ProductDAO().getProductById(productId);
 
@@ -152,7 +154,7 @@ public class TransactionDAO {
     // Ambil semua transaksi
     public List<Transaction> getAllTransactions() {
         List<Transaction> transactions = new ArrayList<>();
-        String sql = "SELECT transactionId FROM transactions";
+        String sql = "SELECT transaction_id FROM transactions";
 
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement();

@@ -3,6 +3,7 @@ package org.example.sasalele_pos.database;
 import org.example.sasalele_pos.model.Log;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,7 +40,7 @@ public class LogDAO {
                 String description = rs.getString("description");
                 LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                return Log(logId, type, description, timestamp);
+                return new Log(logId, type, description, timestamp);
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil log: " + e.getMessage());
@@ -48,7 +49,7 @@ public class LogDAO {
     }
 
     // Ambil semua log
-    public static List<Log> getAllLogs() {
+    public List<Log> getAllLogs() {
         List<Log> logs = new ArrayList<>();
         String sql = "SELECT * FROM logs";
 
@@ -60,9 +61,12 @@ public class LogDAO {
                 int logId = rs.getInt("log_id");
                 String type = rs.getString("type");
                 String description = rs.getString("description");
-                LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"));
 
-                logs.add(Log(logId, type, description, timestamp));
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
+
+                LocalDateTime timestamp = LocalDateTime.parse(rs.getString("timestamp"), formatter);
+
+                logs.add(new Log(logId, type, description, timestamp));
             }
         } catch (SQLException e) {
             System.err.println("Gagal mengambil semua log: " + e.getMessage());

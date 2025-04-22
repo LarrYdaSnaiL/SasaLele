@@ -1,6 +1,9 @@
 package org.example.sasalele_pos.transactions;
 
 import org.example.sasalele_pos.interfaces.Payable;
+
+import javax.swing.*;
+import java.awt.*;
 import java.time.LocalDateTime;
 
 public class RefundTransaction extends Transaction implements Payable {
@@ -13,7 +16,7 @@ public class RefundTransaction extends Transaction implements Payable {
             LocalDateTime date,
             String username,
             String originalTransactionId,
-            double refundAmount // ✅ Tambahkan parameter refundAmount
+            double refundAmount
     ) {
         super(transactionId, date);
         this.username = username;
@@ -39,6 +42,8 @@ public class RefundTransaction extends Transaction implements Payable {
     public void processTransaction() {
         System.out.printf("Refund untuk transaksi %s telah diproses. Jumlah: Rp%,.2f%n",
                 originalTransactionId, refundAmount);
+
+        JOptionPane.showMessageDialog(null, "Refund untuk transaksi " + originalTransactionId + " telah diproses. Jumlah: Rp" + String.format("%,.2f", refundAmount));
     }
 
     @Override
